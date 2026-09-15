@@ -13,6 +13,7 @@ from typing import Callable, Dict, List, Optional
 import mujoco
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+from scipy.optimize import least_squares
 
 from .config import EditorConfig
 from .keyframe import Keyframe
@@ -72,6 +73,8 @@ class SimWorker(threading.Thread):
         self.update_joint_angles_requested = False
         self.joint_angles_to_update = default_joint_angles.copy()
         self.locked_joint_names: Optional[List[str]] = None
+        self.support_site: Optional[str] = None
+        self.support_sites: List[str] = []
 
         self.update_qpos_requested = False
         # Start from current data state (editor may initialize from model home keyframe).
@@ -409,6 +412,111 @@ class SimWorker(threading.Thread):
         mujoco.mj_step(self.model, self.data)
 
     # ----- Requests from UI -----
+    def set_support_site(self, name) -> None:
+        """Select a site whose world pose is preserved during joint edits."""
+        with self.lock:
+            names = [] if name is None else ([name] if isinstance(name, str) else list(name))
+            for name in names:
+                if self.q_start_idx != 7:
+                    raise ValueError("Support locking requires a floating base")
+                sid = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name)
+                if sid < 0:
+                    raise ValueError(f"Unknown support site: {name}")
+                body = int(self.model.site_bodyid[sid])
+                root = int(self.model.jnt_bodyid[0])
+                while body > 0 and body != root:
+                    body = int(self.model.body_parentid[body])
+                if body != root:
+                    raise ValueError("Support site must belong to the floating robot")
+            self.support_sites = names
+            self.support_site = names[0] if len(names) == 1 else None
+
+    def _apply_multi_support_edit(self, updates, locked_joint_names) -> None:
+        """Fit requested angles with both contact frames as high-priority targets.
+
+        Optimize tangent-space coordinates so the freejoint quaternion remains
+        valid. Reject the candidate if contact or joint limits fail validation.
+        """
+        original = self.data.qpos.copy()
+        velocity = self.data.qvel.copy()
+        anchors = [self._get_site_transform(name).copy() for name in self.support_sites]
+        scratch = mujoco.MjData(self.model)
+        site_ids = [mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name)
+                    for name in self.support_sites]
+        lower = np.full(self.model.nv, -np.inf)
+        upper = np.full(self.model.nv, np.inf)
+        requested = []
+        for jid in range(self.model.njnt):
+            if int(self.model.jnt_type[jid]) not in (int(mujoco.mjtJoint.mjJNT_HINGE), int(mujoco.mjtJoint.mjJNT_SLIDE)):
+                continue
+            qa, va = int(self.model.jnt_qposadr[jid]), int(self.model.jnt_dofadr[jid])
+            if self.model.jnt_limited[jid]:
+                lower[va], upper[va] = self.model.jnt_range[jid] - original[qa]
+            name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_JOINT, jid)
+            if name in updates:
+                requested.append((qa, float(updates[name])))
+
+        def contact_error(data):
+            errors = []
+            for sid, target in zip(site_ids, anchors):
+                errors.extend(data.site_xpos[sid] - target[:3, 3])
+                rotation = data.site_xmat[sid].reshape(3, 3)
+                errors.extend(R.from_matrix(target[:3, :3].T @ rotation).as_rotvec())
+            return np.asarray(errors)
+
+        def residual(delta):
+            scratch.qpos[:] = original
+            mujoco.mj_integratePos(self.model, scratch.qpos, delta, 1.0)
+            mujoco.mj_forward(self.model, scratch)
+            return np.concatenate((1e4 * contact_error(scratch),
+                                   [scratch.qpos[qa] - value for qa, value in requested],
+                                   0.03 * delta))
+
+        try:
+            result = least_squares(residual, np.clip(np.zeros(self.model.nv), lower, upper),
+                                   bounds=(lower, upper), method="trf", max_nfev=200, ftol=1e-8)
+            self.data.qpos[:] = original
+            mujoco.mj_integratePos(self.model, self.data.qpos, result.x, 1.0)
+            self._forward(locked_joint_names)
+            valid = np.isfinite(self.data.qpos).all() and np.max(np.abs(contact_error(self.data))) < 1e-6
+            for jid in range(self.model.njnt):
+                if self.model.jnt_limited[jid] and self.model.jnt_type[jid] in (2, 3):
+                    value = self.data.qpos[self.model.jnt_qposadr[jid]]
+                    lo, hi = self.model.jnt_range[jid]
+                    valid = valid and lo - 1e-7 <= value <= hi + 1e-7
+            if not valid:
+                raise ValueError("Contact or joint-limit tolerance exceeded")
+            self.data.qvel[:] = 0
+        except Exception as exc:
+            self.data.qpos[:] = original
+            self.data.qvel[:] = velocity
+            self._forward()
+            print(f"[Support Lock] Kept previous pose: {exc}", flush=True)
+
+    def _apply_joint_edit(self, updates: Dict[str, float], locked_joint_names=None) -> None:
+        """Apply slider values and compensate the freejoint to anchor one site.
+
+        Called under the worker lock. Explicit root edits and loaded keyframes
+        establish a new anchor; playback is not projected onto this constraint.
+        """
+        if len(self.support_sites) > 1:
+            self._apply_multi_support_edit(updates, locked_joint_names)
+            return
+        anchor = self._get_site_transform(self.support_site) if self.support_site else None
+        angles = self._get_joint_angles()
+        angles.update(updates)
+        self._set_joint_angles(angles)
+        self._forward(locked_joint_names)
+        if anchor is not None:
+            current = self._get_site_transform(self.support_site)
+            rotation = anchor[:3, :3] @ current[:3, :3].T
+            translation = anchor[:3, 3] - rotation @ current[:3, 3]
+            self.data.qpos[:3] = rotation @ self.data.qpos[:3] + translation
+            root_rotation = R.from_quat(self.data.qpos[3:7], scalar_first=True).as_matrix()
+            self.data.qpos[3:7] = R.from_matrix(rotation @ root_rotation).as_quat(scalar_first=True)
+            self.data.qvel[:] = 0
+            self._forward()
+
     def request_state_data(self):
         with self.lock:
             if self.is_testing:
@@ -424,9 +532,10 @@ class SimWorker(threading.Thread):
         joint_angles_to_update: Dict[str, float],
         locked_joint_names: Optional[List[str]] = None,
     ):
-        self.update_joint_angles_requested = True
-        self.joint_angles_to_update = joint_angles_to_update.copy()
-        self.locked_joint_names = locked_joint_names
+        with self.lock:
+            self.joint_angles_to_update = joint_angles_to_update.copy()
+            self.locked_joint_names = locked_joint_names
+            self.update_joint_angles_requested = True
 
     def update_qpos(self, qpos: np.ndarray):
         self.update_qpos_requested = True
@@ -571,7 +680,8 @@ class SimWorker(threading.Thread):
 
         This accounts for geom positions and sizes to estimate the lowest point.
         Only geoms participating in contact (contype/conaffinity non-zero) are
-        considered; visual-only geoms are ignored.
+        considered; visual-only geoms and environment geoms outside the configured
+        robot root body are ignored.
 
         Note: Mesh geoms are skipped because rbound is a conservative sphere and
         can significantly overestimate extent. If only mesh contact geoms exist,
@@ -579,7 +689,30 @@ class SimWorker(threading.Thread):
         """
         lowest_z = float("inf")
 
+        # A scene can contain contact-enabled fixtures in addition to the robot.
+        # Ground alignment must never use those fixtures as the robot's lowest
+        # point, so restrict candidates to descendants of the configured root.
+        root_body_id = -1
+        if self.config.root_body:
+            root_body_id = mujoco.mj_name2id(
+                self.model,
+                mujoco.mjtObj.mjOBJ_BODY,
+                self.config.root_body,
+            )
+
+        def is_robot_body(body_id: int) -> bool:
+            if root_body_id < 0:
+                return body_id != 0
+            while body_id > 0:
+                if body_id == root_body_id:
+                    return True
+                body_id = int(self.model.body_parentid[body_id])
+            return False
+
         for geom_id in range(self.model.ngeom):
+            if not is_robot_body(int(self.model.geom_bodyid[geom_id])):
+                continue
+
             # Ignore purely visual geoms that never participate in collisions.
             if int(self.model.geom_contype[geom_id]) == 0 and int(self.model.geom_conaffinity[geom_id]) == 0:
                 continue
@@ -798,11 +931,11 @@ class SimWorker(threading.Thread):
                     self.is_testing = False
                     self.keyframe_test_counter = -1
                     self.traj_test_counter = -1
-                    joint_angles = self._get_joint_angles()
-                    joint_angles.update(self.joint_angles_to_update)
-                    self._set_joint_angles(joint_angles)
-                    self._forward(self.locked_joint_names)
+                    self._apply_joint_edit(self.joint_angles_to_update, self.locked_joint_names)
                     self.update_joint_angles_requested = False
+                    state = (self._get_actuator_values_array(), self._get_joint_angles_array(), self.data.qpos.copy())
+                if self.on_state:
+                    self.on_state(*state)
                 time.sleep(0)  # yield
                 continue
 

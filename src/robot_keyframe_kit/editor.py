@@ -97,6 +97,17 @@ class ViserKeyframeEditor:
             config.root_body = self._auto_detect_root_body()
             print(f"[Viser] Auto-detected root body: {config.root_body}", flush=True)
 
+        # CoM visualization should represent the robot only.  World subtree 0
+        # also contains static scene fixtures, which would pull the displayed
+        # CoM toward any massive environment object.
+        self._com_root_body_id = mujoco.mj_name2id(
+            self.model,
+            mujoco.mjtObj.mjOBJ_BODY,
+            config.root_body,
+        )
+        if self._com_root_body_id < 0:
+            self._com_root_body_id = 0
+
         # Auto-discover joints and actuators from model
         self.joint_names: List[str] = []
         self.actuator_names: List[str] = []
@@ -2692,7 +2703,7 @@ class ViserKeyframeEditor:
             try:
                 if self._com_sphere is not None:
                     with self.worker_lock:
-                        com_pos = self.data.subtree_com[0].copy()
+                        com_pos = self.data.subtree_com[self._com_root_body_id].copy()
                     try:
                         self._com_sphere.position = tuple(map(float, com_pos))
                     except Exception:
@@ -4595,6 +4606,32 @@ class ViserKeyframeEditor:
 
     def _build_settings_panel(self) -> None:
         with self.server.gui.add_folder("⚙️ Settings"):
+            support_options = {"Off": None}
+            if self.has_floating_base:
+                for name in self.config.end_effector_sites or []:
+                    if mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name) >= 0:
+                        support_options[name] = name
+            if "left_foot_floor" in support_options and "right_foot_floor" in support_options:
+                support_options["Both feet"] = ("left_foot_floor", "right_foot_floor")
+            # Knee references are support-only; adding them to end_effectors
+            # would also change the ground-placement fallback and IK targets.
+            if self.has_floating_base:
+                for label, name in (("Left knee", "left_knee_frame"), ("Right knee", "right_knee_frame")):
+                    if mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_SITE, name) >= 0:
+                        support_options[label] = name
+                if "Left knee" in support_options and "Right knee" in support_options:
+                    support_options["Both knees"] = ("left_knee_frame", "right_knee_frame")
+            support_control = self.server.gui.add_dropdown(
+                "Support Lock (joint sliders)",
+                options=tuple(support_options),
+                initial_value="Off",
+                hint="Preserve selected frames during joint slider edits. Paired supports use IK and may adjust other joints or limit requested angles. Knee frames are joint origins, not surface contact points. Root edits and loaded poses reset anchors; IK gizmos and playback are not constrained.",
+            )
+
+            @support_control.on_update
+            def _support_changed(_event: GuiEvent) -> None:
+                self.worker.set_support_site(support_options[support_control.value])
+
             row1 = self.server.gui.add_columns(2, widths=(1.0, 1.0))
             with row1[0]:
                 self.mirror_checked = self.server.gui.add_checkbox("Mirror", True)

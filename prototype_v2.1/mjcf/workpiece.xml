@@ -1,0 +1,27 @@
+<mujoco model="access hole workpiece">
+  <asset>
+    <material name="workpiece_metal" rgba="0.32 0.35 0.38 1" metallic="0.65" roughness="0.3" />
+    <mesh name="access_hole_mesh" file="../meshes/access hole.STL" />
+  </asset>
+  <worldbody>
+    <!--
+      The STL is authored in meters with X as its thickness direction.
+      Its opening center is approximately (x, y, z) = (0.0051, 0.909, 1.325).
+      This body offset places that center at world (0.9051, 0, 0.7).
+
+      Keep this mesh visual-only: MuJoCo uses a convex hull for mesh contact,
+      which would incorrectly fill the access opening.
+    -->
+    <body name="access_hole" pos="0.9 -0.909 -0.3">
+      <geom
+        name="access_hole_visual"
+        type="mesh"
+        mesh="access_hole_mesh"
+        material="workpiece_metal"
+        contype="0"
+        conaffinity="0"
+        group="2"
+      />
+    </body>
+  </worldbody>
+</mujoco>
