@@ -221,6 +221,10 @@ class ViserKeyframeEditor:
         self._com_sphere: Optional[object] = None
         self._com_ground_sphere: Optional[object] = None
         self._ground_contact_handles: Dict[Tuple[int, int], object] = {}
+        self._ground_contact_labels: Dict[Tuple[int, int], object] = {}
+        self._ground_contact_started: Dict[Tuple[int, int], float] = {}
+        self._penetration_last_check = 0.0
+        self._penetration_reported: Dict[int, float] = {}
         self.show_ground_contacts = None
         self._scene_updater: Optional[threading.Thread] = None
         scene_hz = max(15.0, min(120.0, float(getattr(config, "scene_update_hz", 60.0))))
@@ -2767,12 +2771,102 @@ class ViserKeyframeEditor:
         return {key: (np.mean(points, axis=0) + rotation[:, 2] * 0.003, rotation)
                 for key, (points, rotation) in groups.items()}
 
+    def _ground_penetration_depths(self) -> Dict[int, float]:
+        """Maximum surface penetration per robot body (meters).
+
+        Caller holds worker_lock. Includes visual meshes so missing collision
+        flags cannot hide a buried link. Uses upward horizontal world planes,
+        or the editor's z=0 ground if none exist. Does not step the simulation.
+        """
+        ground_z = []
+        for gid in range(self.model.ngeom):
+            if (int(self.model.geom_bodyid[gid]) == 0
+                    and int(self.model.geom_type[gid]) == int(mujoco.mjtGeom.mjGEOM_PLANE)
+                    and self.data.geom_xmat[gid].reshape(3, 3)[2, 2] > 0.999999):
+                ground_z.append(float(self.data.geom_xpos[gid, 2]))
+        floor = max(ground_z, default=0.0)
+        depths = {}
+        for gid in range(self.model.ngeom):
+            body = int(self.model.geom_bodyid[gid])
+            ancestor = body
+            while ancestor > 0 and ancestor != self._com_root_body_id:
+                ancestor = int(self.model.body_parentid[ancestor])
+            if body == 0 or ancestor != self._com_root_body_id:
+                continue
+            kind = int(self.model.geom_type[gid])
+            size = self.model.geom_size[gid]
+            z = float(self.data.geom_xpos[gid, 2])
+            axis = self.data.geom_xmat[gid].reshape(3, 3)[2]
+            if kind == int(mujoco.mjtGeom.mjGEOM_MESH):
+                mid = int(self.model.geom_dataid[gid])
+                start, count = int(self.model.mesh_vertadr[mid]), int(self.model.mesh_vertnum[mid])
+                if count == 0:
+                    continue
+                low = z + float(np.min(self.model.mesh_vert[start:start + count] @ axis))
+            elif kind == int(mujoco.mjtGeom.mjGEOM_BOX):
+                low = z - float(np.abs(axis) @ size)
+            elif kind == int(mujoco.mjtGeom.mjGEOM_SPHERE):
+                low = z - float(size[0])
+            elif kind == int(mujoco.mjtGeom.mjGEOM_CAPSULE):
+                low = z - float(size[0] + size[1] * abs(axis[2]))
+            elif kind == int(mujoco.mjtGeom.mjGEOM_CYLINDER):
+                low = z - float(size[0] * np.linalg.norm(axis[:2]) + size[1] * abs(axis[2]))
+            elif kind == int(mujoco.mjtGeom.mjGEOM_ELLIPSOID):
+                low = z - float(np.linalg.norm(axis * size))
+            else:
+                continue
+            # Ignore sub-0.1 mm numerical/contact tolerances.
+            depth = floor - low
+            if depth > 0.0001:
+                depths[body] = max(depths.get(body, 0.0), depth)
+        return depths
+
+    def _report_ground_penetrations(self) -> None:
+        now = time.monotonic()
+        if now - self._penetration_last_check < 0.2:
+            return
+        self._penetration_last_check = now
+        with self.worker_lock:
+            depths = self._ground_penetration_depths()
+        for body, depth in depths.items():
+            previous = self._penetration_reported.get(body)
+            if previous is None or abs(depth - previous) >= 0.0001:
+                name = mujoco.mj_id2name(self.model, mujoco.mjtObj.mjOBJ_BODY, body) or f"body_{body}"
+                print(f"\033[91m[Ground penetration] {name}: {depth * 1000:.3f} mm below ground\033[0m", flush=True)
+                self._penetration_reported[body] = depth
+        for body in list(self._penetration_reported):
+            if body not in depths:
+                del self._penetration_reported[body]
+
     def _update_ground_contact_markers(self) -> None:
         enabled = self.show_ground_contacts is not None and self.show_ground_contacts.value
+        now = time.monotonic()
         with self.worker_lock:
-            poses = self._ground_contact_poses() if enabled else {}
+            poses = self._ground_contact_poses()
+            depths = {key: 0.0 for key in poses}
+            for contact in self.data.contact[:self.data.ncon]:
+                g1, g2 = int(contact.geom1), int(contact.geom2)
+                if min(g1, g2) < 0:
+                    continue
+                for plane, robot in ((g1, g2), (g2, g1)):
+                    key = (int(self.model.geom_bodyid[robot]), plane)
+                    if key in depths:
+                        depths[key] = max(depths[key], -float(contact.dist))
+        for key in list(self._ground_contact_started):
+            if key not in poses:
+                name = self.model.body(key[0]).name
+                print(f"[Contact END] {name}", flush=True)
+                del self._ground_contact_started[key]
+        for key in poses:
+            if key not in self._ground_contact_started:
+                self._ground_contact_started[key] = now
+                print(f"\033[93m[Contact NEW] {self.model.body(key[0]).name}\033[0m", flush=True)
         for key, handle in self._ground_contact_handles.items():
-            handle.visible = key in poses
+            handle.visible = bool(enabled and key in poses)
+        for key, label in self._ground_contact_labels.items():
+            label.visible = bool(enabled and key in poses)
+        if not enabled:
+            return
         for key, (position, rotation) in poses.items():
             if key not in self._ground_contact_handles:
                 theta = np.arange(48) * (2 * np.pi / 48)
@@ -2784,9 +2878,35 @@ class ViserKeyframeEditor:
                     faces=faces, color=(255, 30, 30), opacity=0.9, side="double",
                 )
             handle = self._ground_contact_handles[key]
+            age = now - self._ground_contact_started[key]
+            is_new = age < 2.0
+            depth_mm = depths[key] * 1000
+            if depth_mm > 0.1:
+                color = (255, 30, 30)
+                status = f"PENETRATION {depth_mm:.2f} mm"
+                if is_new:
+                    status = "NEW / " + status
+            elif is_new:
+                color = (255, 220, 0)
+                status = "NEW CONTACT"
+            else:
+                color = (40, 220, 100)
+                status = "CONTACT"
+            handle.color = color
+            handle.opacity = (0.65 + 0.3 * (0.5 + 0.5 * np.sin(age * 10))) if is_new else 0.9
             handle.position = tuple(position)
             handle.wxyz = tuple(R.from_matrix(rotation).as_quat(scalar_first=True))
             handle.visible = True
+            text = f"{self.model.body(key[0]).name}\n{status}"
+            if key not in self._ground_contact_labels:
+                self._ground_contact_labels[key] = self.server.scene.add_label(
+                    f"/ground_contact_labels/{key[0]}_{key[1]}", text,
+                    depth_test=False, font_screen_scale=0.8,
+                )
+            label = self._ground_contact_labels[key]
+            label.text = text
+            label.position = tuple(position + rotation[:, 2] * 0.12)
+            label.visible = True
 
     def _start_scene_updater(self) -> None:
         """Launch the background scene updater thread."""
@@ -2806,6 +2926,7 @@ class ViserKeyframeEditor:
         """Periodically push scene poses and apply visibility toggles."""
         while True:
             try:
+                self._report_ground_penetrations()
                 self._update_ground_contact_markers()
                 if self._com_sphere is not None or self._com_ground_sphere is not None:
                     with self.worker_lock:
@@ -4769,7 +4890,7 @@ class ViserKeyframeEditor:
 
             self.show_ground_contacts = self.server.gui.add_checkbox(
                 "Show Ground Contacts", True,
-                hint="Red disks mark robot/ground geometric contacts (1 mm tolerance). Disk size is illustrative, not the physical contact area or force.",
+                hint="New contact: yellow pulse for 2 s. Continuing: green. Penetration >0.1 mm: red. Labels show link and status. Disk size is illustrative, not contact area or force.",
             )
             support_options = {"Off": None}
             if self.has_floating_base:
