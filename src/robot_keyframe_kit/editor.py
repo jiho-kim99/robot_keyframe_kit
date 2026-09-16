@@ -207,6 +207,7 @@ class ViserKeyframeEditor:
 
         # Scene bookkeeping
         self._geom_handles: Dict[int, object] = {}
+        self._collision_view_handles: Dict[int, object] = {}
         self._geom_fade_handles: Dict[int, object] = {}
         self._geom_groups: Dict[int, int] = {}
         self._geom_body_ids: Dict[int, int] = {}
@@ -219,6 +220,8 @@ class ViserKeyframeEditor:
         self._mesh_quat_map: Dict[str, Tuple[float, float, float, float]] = {}
         self._com_sphere: Optional[object] = None
         self._com_ground_sphere: Optional[object] = None
+        self._ground_contact_handles: Dict[Tuple[int, int], object] = {}
+        self.show_ground_contacts = None
         self._scene_updater: Optional[threading.Thread] = None
         scene_hz = max(15.0, min(120.0, float(getattr(config, "scene_update_hz", 60.0))))
         self._scene_update_dt = 1.0 / scene_hz
@@ -266,7 +269,7 @@ class ViserKeyframeEditor:
             print(f"[Viser] configure_theme failed: {exc}", flush=True)
 
         if config.show_grid:
-            self.server.scene.add_grid("/grid", width=20, height=20, infinite_grid=True)
+            self._build_checker_floor()
 
         @self.server.on_client_connect
         def _(client: viser.ClientHandle) -> None:
@@ -1565,7 +1568,7 @@ class ViserKeyframeEditor:
 
             keyframe_ops_row2 = self.server.gui.add_button_group(
                 "",
-                ["Test", "Ground"],
+                ["Test", "Ground", "Ground Knee"],
             )
 
             @keyframe_ops_row2.on_click
@@ -1575,6 +1578,8 @@ class ViserKeyframeEditor:
                     self._test_keyframe()
                 elif val == "Ground":
                     self.worker.request_on_ground()
+                elif val == "Ground Knee":
+                    self.worker.request_ground_knee()
 
         with self.server.gui.add_folder("🎬 Sequence Operations"):
             seq_ops_row1 = self.server.gui.add_button_group(
@@ -2563,6 +2568,17 @@ class ViserKeyframeEditor:
 
             if handle is not None:
                 self._geom_handles[i] = handle
+                if self._geom_is_collision[i]:
+                    try:
+                        collision_mesh = mesh.convex_hull if gtype == int(mujoco.mjtGeom.mjGEOM_MESH) else mesh
+                        self._collision_view_handles[i] = self.server.scene.add_mesh_simple(
+                            f"/collision_view/{i:04d}_{name}",
+                            vertices=np.asarray(collision_mesh.vertices, dtype=np.float32),
+                            faces=np.asarray(collision_mesh.faces, dtype=np.uint32),
+                            color=(235, 165, 65), visible=False,
+                        )
+                    except Exception as exc:
+                        print(f"[Collision View] Cannot build geom {i}: {exc}", flush=True)
                 # Build a lightweight translucent proxy mesh used only when
                 # gizmo-assisted fading is active.
                 fade_handle = None
@@ -2630,6 +2646,9 @@ class ViserKeyframeEditor:
             show_all = True
 
         fade_indices = self._collect_gizmo_fade_geom_indices()
+        collision_mode = show_collision and not show_all
+        for collision_handle in self._collision_view_handles.values():
+            collision_handle.visible = collision_mode
 
         for i, handle in self._geom_handles.items():
             fade_handle = self._geom_fade_handles.get(i)
@@ -2640,9 +2659,7 @@ class ViserKeyframeEditor:
             if show_all:
                 visible = True
             elif show_collision:
-                # Collision mode: preserve original robot collision set (group 3)
-                # and additionally include contact-enabled scene geoms (e.g. cart).
-                visible = is_collision_group or has_contact
+                visible = has_contact and i not in self._collision_view_handles
             else:
                 # Default mode: preserve original visual view (hide only group-3 collision geoms).
                 visible = group != 3
@@ -2689,6 +2706,88 @@ class ViserKeyframeEditor:
             except Exception:
                 continue
 
+    def _build_checker_floor(self) -> None:
+        """Blue checkerboard visual at z=0; physics stays in the MJCF plane."""
+        cell = 0.5
+        for parity, color in enumerate(((19, 57, 83), (53, 100, 137))):
+            vertices, faces = [], []
+            for x in range(-40, 40):
+                for y in range(-40, 40):
+                    if (x + y) % 2 != parity:
+                        continue
+                    i = len(vertices)
+                    vertices.extend(((x * cell, y * cell, -0.001),
+                                     ((x + 1) * cell, y * cell, -0.001),
+                                     ((x + 1) * cell, (y + 1) * cell, -0.001),
+                                     (x * cell, (y + 1) * cell, -0.001)))
+                    faces.extend(((i, i + 1, i + 2), (i, i + 2, i + 3)))
+            self.server.scene.add_mesh_simple(
+                f"/floor_checker/{parity}", vertices=np.asarray(vertices, dtype=np.float32),
+                faces=np.asarray(faces, dtype=np.uint32), color=color,
+                cast_shadow=False, receive_shadow=True,
+            )
+        self.server.scene.add_grid(
+            "/grid", width=40, height=40, infinite_grid=False,
+            cell_size=cell, section_size=cell, cell_color=(114, 158, 183),
+            section_color=(114, 158, 183), cell_thickness=0.5,
+            section_thickness=0.5, shadow_opacity=0.25,
+        )
+
+    def _ground_contact_poses(self):
+        """Snapshot robot/ground-plane contacts, grouped by link and plane.
+
+        Geometric contact indication (1 mm tolerance), not a force or area
+        estimate. Caller holds worker_lock; no simulation state is modified.
+        """
+        groups = {}
+        for contact in self.data.contact[:self.data.ncon]:
+            g1, g2 = int(contact.geom1), int(contact.geom2)
+            if min(g1, g2) < 0 or float(contact.dist) > 0.001:
+                continue
+            for plane, robot in ((g1, g2), (g2, g1)):
+                if int(self.model.geom_type[plane]) != int(mujoco.mjtGeom.mjGEOM_PLANE):
+                    continue
+                if int(self.model.geom_bodyid[plane]) != 0:
+                    continue
+                body = int(self.model.geom_bodyid[robot])
+                ancestor = body
+                while ancestor > 0 and ancestor != self._com_root_body_id:
+                    ancestor = int(self.model.body_parentid[ancestor])
+                if ancestor != self._com_root_body_id or body == 0:
+                    continue
+                rotation = self.data.geom_xmat[plane].reshape(3, 3).copy()
+                normal = rotation[:, 2]
+                if normal[2] < 0.5:
+                    continue
+                point = contact.pos.copy()
+                origin = self.data.geom_xpos[plane]
+                point -= normal * np.dot(point - origin, normal)
+                key = (body, plane)
+                groups.setdefault(key, ([], rotation))[0].append(point)
+        return {key: (np.mean(points, axis=0) + rotation[:, 2] * 0.003, rotation)
+                for key, (points, rotation) in groups.items()}
+
+    def _update_ground_contact_markers(self) -> None:
+        enabled = self.show_ground_contacts is not None and self.show_ground_contacts.value
+        with self.worker_lock:
+            poses = self._ground_contact_poses() if enabled else {}
+        for key, handle in self._ground_contact_handles.items():
+            handle.visible = key in poses
+        for key, (position, rotation) in poses.items():
+            if key not in self._ground_contact_handles:
+                theta = np.arange(48) * (2 * np.pi / 48)
+                vertices = np.vstack((np.zeros((1, 3)),
+                                      np.column_stack((0.08 * np.cos(theta), 0.08 * np.sin(theta), np.zeros(48)))))
+                faces = np.array([[0, i + 1, (i + 1) % 48 + 1] for i in range(48)])
+                self._ground_contact_handles[key] = self.server.scene.add_mesh_simple(
+                    f"/ground_contacts/{key[0]}_{key[1]}", vertices=vertices,
+                    faces=faces, color=(255, 30, 30), opacity=0.9, side="double",
+                )
+            handle = self._ground_contact_handles[key]
+            handle.position = tuple(position)
+            handle.wxyz = tuple(R.from_matrix(rotation).as_quat(scalar_first=True))
+            handle.visible = True
+
     def _start_scene_updater(self) -> None:
         """Launch the background scene updater thread."""
         if not (self._geom_handles or self._scene_handles or self._com_sphere or self._com_ground_sphere):
@@ -2707,6 +2806,7 @@ class ViserKeyframeEditor:
         """Periodically push scene poses and apply visibility toggles."""
         while True:
             try:
+                self._update_ground_contact_markers()
                 if self._com_sphere is not None or self._com_ground_sphere is not None:
                     with self.worker_lock:
                         com_pos = self.data.subtree_com[self._com_root_body_id].copy()
@@ -2738,8 +2838,13 @@ class ViserKeyframeEditor:
                                 quat_xyzw = R.from_matrix(xmat[index]).as_quat()
                                 qx, qy, qz, qw = map(float, quat_xyzw)
                             handle.position = position
+                            collision_handle = self._collision_view_handles.get(index)
+                            if collision_handle is not None:
+                                collision_handle.position = position
                             if hasattr(handle, "wxyz"):
                                 handle.wxyz = (qw, qx, qy, qz)
+                            if collision_handle is not None:
+                                collision_handle.wxyz = (qw, qx, qy, qz)
                             fade_handle = self._geom_fade_handles.get(index)
                             if fade_handle is not None:
                                 try:
@@ -4651,6 +4756,21 @@ class ViserKeyframeEditor:
 
     def _build_settings_panel(self) -> None:
         with self.server.gui.add_folder("⚙️ Settings"):
+            collision_view_button = self.server.gui.add_button("Visual / Collision Mesh")
+
+            @collision_view_button.on_click
+            def _toggle_collision_view(_event: GuiEvent) -> None:
+                if self.collision_geom_checked is None:
+                    return
+                self.collision_geom_checked.value = not bool(self.collision_geom_checked.value)
+                if self.show_all_geoms is not None:
+                    self.show_all_geoms.value = False
+                self._apply_geom_visibility()
+
+            self.show_ground_contacts = self.server.gui.add_checkbox(
+                "Show Ground Contacts", True,
+                hint="Red disks mark robot/ground geometric contacts (1 mm tolerance). Disk size is illustrative, not the physical contact area or force.",
+            )
             support_options = {"Off": None}
             if self.has_floating_base:
                 for name in self.config.end_effector_sites or []:

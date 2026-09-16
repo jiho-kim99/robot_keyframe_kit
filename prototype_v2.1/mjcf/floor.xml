@@ -6,8 +6,8 @@
     </visual>
 
     <asset>
-        <texture name="grid" type="2d" builtin="checker" rgb1=".1 .2 .3" rgb2=".2 .3 .4" width="300" height="300"/>
-        <material name="grid" texture="grid" texrepeat="8 8" reflectance=".2"/>
+        <texture name="grid" type="2d" builtin="checker" rgb1=".075 .224 .325" rgb2=".208 .392 .537" width="512" height="512"/>
+        <material name="grid" texture="grid" texrepeat="1 1" texuniform="true" reflectance=".2"/>
     </asset>
 
     <worldbody>

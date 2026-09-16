@@ -752,6 +752,73 @@ class SimWorker(threading.Thread):
 
         return lowest_z
 
+    def _mesh_surface_min_z(self, geom_id: int) -> float:
+        """Lowest mesh vertex in world space, including compiled mesh transforms.
+
+        MuJoCo mesh vertices are recentered/rotated at compilation; geom_xmat
+        and geom_xpos supply that transform as well as the current body pose.
+        Scale is already baked into mesh_vert.
+        """
+        mesh_id = int(self.model.geom_dataid[geom_id])
+        start = int(self.model.mesh_vertadr[mesh_id])
+        count = int(self.model.mesh_vertnum[mesh_id])
+        vertices = self.model.mesh_vert[start:start + count]
+        if count == 0:
+            return float("inf")
+        z_axis = self.data.geom_xmat[geom_id].reshape(3, 3)[2]
+        return float(np.min(vertices @ z_axis) + self.data.geom_xpos[geom_id, 2])
+
+    def request_ground_knee(self) -> None:
+        """Translate the floating robot to ground its calf mesh at z=0.
+
+        Uses the lower of the two calf surfaces, or the selected single knee.
+        Other robot meshes and contact primitives prevent lowering them through
+        the floor. This does not change joint angles or enforce playback contact.
+        """
+        with self.lock:
+            if self.is_testing or self.q_start_idx != 7:
+                return
+            self._forward()
+            knee_bodies = {
+                "left_knee_frame": "left_knee_pitch_link",
+                "right_knee_frame": "right_knee_pitch_link",
+            }
+            names = ([knee_bodies[self.support_site]] if self.support_site in knee_bodies
+                     else list(knee_bodies.values()))
+            targets = {mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, name) for name in names}
+            root = int(self.model.jnt_bodyid[0])
+            calf_min = float("inf")
+            robot_min = self._get_lowest_geom_z()
+            for gid in range(self.model.ngeom):
+                if int(self.model.geom_type[gid]) != int(mujoco.mjtGeom.mjGEOM_MESH):
+                    continue
+                body = int(self.model.geom_bodyid[gid])
+                ancestor = body
+                while ancestor > 0 and ancestor != root:
+                    ancestor = int(self.model.body_parentid[ancestor])
+                if ancestor != root:
+                    continue
+                lowest = self._mesh_surface_min_z(gid)
+                robot_min = min(robot_min, lowest)
+                if body in targets:
+                    calf_min = min(calf_min, lowest)
+            if not np.isfinite(calf_min):
+                print("[Ground Knee] No calf mesh found; pose unchanged.", flush=True)
+                return
+            # A different link may be below the selected calf. Do not bury it
+            # simply to force the knee to touch; the pose must be edited first.
+            lowest = min(calf_min, robot_min)
+            self.data.qpos[2] -= lowest
+            self.data.qvel[:] = 0
+            self._forward()
+            gap = calf_min - lowest
+            print(f"[Ground Knee] Root Z shift={-lowest:.6f} m; calf gap={gap:.6f} m", flush=True)
+            if gap > 1e-5:
+                print("[Ground Knee] Another link is lower than the calf. Adjust the pose to achieve knee-only contact.", flush=True)
+            state = (self._get_actuator_values_array(), self._get_joint_angles_array(), self.data.qpos.copy())
+        if self.on_state:
+            self.on_state(*state)
+
     def request_on_ground(self):
         """Place the robot on the ground by finding the lowest collision geometry."""
         with self.lock:
