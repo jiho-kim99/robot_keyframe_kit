@@ -27,8 +27,5 @@
   <!-- Floor and Sky -->
   <include file="./floor.xml" />
 
-  <!-- Access-hole welding workpiece -->
-  <include file="./workpiece.xml" />
-
 
 </mujoco>

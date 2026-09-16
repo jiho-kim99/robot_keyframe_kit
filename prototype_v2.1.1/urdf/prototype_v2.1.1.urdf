@@ -26,7 +26,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/pelvis_link.STL" />
+          filename="../meshes/pelvis_link.STL" />
       </geometry>
       <material
         name="">
@@ -40,7 +40,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/pelvis_link.STL" />
+          filename="../meshes/pelvis_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -66,7 +66,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_pitch_link.STL" />
+          filename="../meshes/left_hip_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -80,7 +80,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_pitch_link.STL" />
+          filename="../meshes/left_hip_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -97,10 +97,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="left_hip_roll_link">
@@ -124,7 +124,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_roll_link.STL" />
+          filename="../meshes/left_hip_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -138,7 +138,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_roll_link.STL" />
+          filename="../meshes/left_hip_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -155,10 +155,10 @@
     <axis
       xyz="-0.86603 0 -0.5" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="left_hip_yaw_link">
@@ -182,7 +182,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_yaw_link.STL" />
+          filename="../meshes/left_hip_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -196,7 +196,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_hip_yaw_link.STL" />
+          filename="../meshes/left_hip_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -213,10 +213,10 @@
     <axis
       xyz="0.046391 0 0.99892" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="120"
+      velocity="15" />
   </joint>
   <link
     name="left_knee_pitch_link">
@@ -240,7 +240,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_knee_pitch_link.STL" />
+          filename="../meshes/left_knee_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -254,7 +254,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_knee_pitch_link.STL" />
+          filename="../meshes/left_knee_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -271,10 +271,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.2689"
+      upper="2.2689"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="left_ankle_pitch_link">
@@ -298,7 +298,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_ankle_pitch_link.STL" />
+          filename="../meshes/left_ankle_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -312,7 +312,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_ankle_pitch_link.STL" />
+          filename="../meshes/left_ankle_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -329,10 +329,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.0944"
+      upper="2.0944"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="left_ankle_roll_link">
@@ -356,7 +356,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_ankle_roll_link.STL" />
+          filename="../meshes/left_ankle_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -370,7 +370,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_ankle_roll_link.STL" />
+          filename="../meshes/left_ankle_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -387,10 +387,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.6981"
+      upper="0.6981"
+      effort="60"
+      velocity="16" />
   </joint>
   <link
     name="right_hip_pitch_link">
@@ -414,7 +414,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_pitch_link.STL" />
+          filename="../meshes/right_hip_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -428,7 +428,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_pitch_link.STL" />
+          filename="../meshes/right_hip_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -445,10 +445,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="right_hip_roll_link">
@@ -472,7 +472,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_roll_link.STL" />
+          filename="../meshes/right_hip_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -486,7 +486,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_roll_link.STL" />
+          filename="../meshes/right_hip_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -503,10 +503,10 @@
     <axis
       xyz="-0.86603 0 -0.5" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="right_hip_yaw_link">
@@ -530,7 +530,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_yaw_link.STL" />
+          filename="../meshes/right_hip_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -544,7 +544,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_hip_yaw_link.STL" />
+          filename="../meshes/right_hip_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -561,10 +561,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="120"
+      velocity="15" />
   </joint>
   <link
     name="right_knee_pitch_link">
@@ -588,7 +588,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_knee_pitch_link.STL" />
+          filename="../meshes/right_knee_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -602,7 +602,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_knee_pitch_link.STL" />
+          filename="../meshes/right_knee_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -619,10 +619,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.2689"
+      upper="2.2689"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="right_ankle_pitch_link">
@@ -646,7 +646,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_ankle_pitch_link.STL" />
+          filename="../meshes/right_ankle_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -660,7 +660,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_ankle_pitch_link.STL" />
+          filename="../meshes/right_ankle_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -677,10 +677,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.0944"
+      upper="2.0944"
+      effort="440"
+      velocity="10" />
   </joint>
   <link
     name="right_ankle_roll_link">
@@ -704,7 +704,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_ankle_roll_link.STL" />
+          filename="../meshes/right_ankle_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -718,7 +718,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_ankle_roll_link.STL" />
+          filename="../meshes/right_ankle_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -735,10 +735,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.6981"
+      upper="0.6981"
+      effort="60"
+      velocity="16" />
   </joint>
   <link
     name="waist_yaw_link">
@@ -762,7 +762,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/waist_yaw_link.STL" />
+          filename="../meshes/waist_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -776,7 +776,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/waist_yaw_link.STL" />
+          filename="../meshes/waist_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -793,10 +793,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.1416"
+      upper="3.1416"
+      effort="120"
+      velocity="15" />
   </joint>
   <link
     name="waist_pitch_link">
@@ -820,7 +820,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/waist_pitch_link.STL" />
+          filename="../meshes/waist_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -834,7 +834,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/waist_pitch_link.STL" />
+          filename="../meshes/waist_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -851,10 +851,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.5236"
+      upper="1.5708"
+      effort="880"
+      velocity="10" />
   </joint>
   <link
     name="left_shoulder_pitch_link">
@@ -878,7 +878,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_pitch_link.STL" />
+          filename="../meshes/left_shoulder_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -892,7 +892,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_pitch_link.STL" />
+          filename="../meshes/left_shoulder_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -909,10 +909,10 @@
     <axis
       xyz="0 0.96593 0.25882" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.2252948"
+      upper="2.2252948"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="left_shoulder_roll_link">
@@ -936,7 +936,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_roll_link.STL" />
+          filename="../meshes/left_shoulder_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -950,7 +950,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_roll_link.STL" />
+          filename="../meshes/left_shoulder_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -967,10 +967,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.261799"
+      upper="3.403392"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="left_shoulder_yaw_link">
@@ -994,7 +994,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_yaw_link.STL" />
+          filename="../meshes/left_shoulder_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -1008,7 +1008,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_shoulder_yaw_link.STL" />
+          filename="../meshes/left_shoulder_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1025,10 +1025,10 @@
     <axis
       xyz="0 0 -1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.225295"
+      upper="2.225295"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="left_elbow_pitch_link">
@@ -1052,7 +1052,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_elbow_pitch_link.STL" />
+          filename="../meshes/left_elbow_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -1066,7 +1066,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_elbow_pitch_link.STL" />
+          filename="../meshes/left_elbow_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1083,10 +1083,10 @@
     <axis
       xyz="0 1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.698132"
+      upper="3.839724"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="left_wrist_roll_link">
@@ -1110,7 +1110,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_wrist_roll_link.STL" />
+          filename="../meshes/left_wrist_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -1124,7 +1124,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_wrist_roll_link.STL" />
+          filename="../meshes/left_wrist_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1141,10 +1141,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.967060"
+      upper="2.967060"
+      effort="60"
+      velocity="18" />
   </joint>
   <link
     name="left_wrist_yaw_link">
@@ -1168,7 +1168,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_wrist_yaw_link.STL" />
+          filename="../meshes/left_wrist_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -1182,7 +1182,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/left_wrist_yaw_link.STL" />
+          filename="../meshes/left_wrist_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1199,10 +1199,10 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.262747"
+      upper="1.262747"
+      effort="36"
+      velocity="11" />
   </joint>
   <link
     name="right_shoulder_pitch_link">
@@ -1226,7 +1226,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_pitch_link.STL" />
+          filename="../meshes/right_shoulder_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -1240,7 +1240,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_pitch_link.STL" />
+          filename="../meshes/right_shoulder_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1257,10 +1257,10 @@
     <axis
       xyz="0 -0.965925826289067 0.258819045102525" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.2252948"
+      upper="2.2252948"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="right_shoulder_roll_link">
@@ -1284,7 +1284,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_roll_link.STL" />
+          filename="../meshes/right_shoulder_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -1298,7 +1298,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_roll_link.STL" />
+          filename="../meshes/right_shoulder_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1315,10 +1315,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-3.403392"
+      upper="0.261799"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="right_shoulder_yaw_link">
@@ -1342,7 +1342,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_yaw_link.STL" />
+          filename="../meshes/right_shoulder_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -1356,7 +1356,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_shoulder_yaw_link.STL" />
+          filename="../meshes/right_shoulder_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1373,10 +1373,10 @@
     <axis
       xyz="0 0 -1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.225295"
+      upper="2.225295"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="right_elbow_pitch_link">
@@ -1400,7 +1400,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_elbow_pitch_link.STL" />
+          filename="../meshes/right_elbow_pitch_link.STL" />
       </geometry>
       <material
         name="">
@@ -1414,7 +1414,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_elbow_pitch_link.STL" />
+          filename="../meshes/right_elbow_pitch_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1431,10 +1431,10 @@
     <axis
       xyz="0 -1 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-0.698132"
+      upper="3.839724"
+      effort="120"
+      velocity="16" />
   </joint>
   <link
     name="right_wrist_roll_link">
@@ -1458,7 +1458,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_wrist_roll_link.STL" />
+          filename="../meshes/right_wrist_roll_link.STL" />
       </geometry>
       <material
         name="">
@@ -1472,7 +1472,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_wrist_roll_link.STL" />
+          filename="../meshes/right_wrist_roll_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1489,10 +1489,10 @@
     <axis
       xyz="1 0 0" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-2.967060"
+      upper="2.967060"
+      effort="60"
+      velocity="18" />
   </joint>
   <link
     name="right_wrist_yaw_link">
@@ -1516,7 +1516,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_wrist_yaw_link.STL" />
+          filename="../meshes/right_wrist_yaw_link.STL" />
       </geometry>
       <material
         name="">
@@ -1530,7 +1530,7 @@
         rpy="0 0 0" />
       <geometry>
         <mesh
-          filename="package://prototype_v2.1.1/meshes/right_wrist_yaw_link.STL" />
+          filename="../meshes/right_wrist_yaw_link.STL" />
       </geometry>
     </collision>
   </link>
@@ -1547,9 +1547,91 @@
     <axis
       xyz="0 0 1" />
     <limit
-      lower="0"
-      upper="0"
-      effort="0"
-      velocity="0" />
+      lower="-1.262747"
+      upper="1.262747"
+      effort="36"
+      velocity="11" />
+  </joint>
+  <link name="left_foot_floor" />
+  <joint name="left_foot_floor_joint" type="fixed" dont_collapse="true">
+    <origin xyz="-0.03225 0 -0.0735" rpy="0 0 0" />
+    <parent link="left_ankle_roll_link" />
+    <child link="left_foot_floor" />
+  </joint>
+  <link name="right_foot_floor" />
+  <joint name="right_foot_floor_joint" type="fixed" dont_collapse="true">
+    <origin xyz="-0.03225 0 -0.0735" rpy="0 0 0" />
+    <parent link="right_ankle_roll_link" />
+    <child link="right_foot_floor" />
+  </joint>
+  <link name="left_wrist_pitch_link">
+    <inertial>
+      <origin xyz="0.07016429 -0.00805890 0.01242480" rpy="0 0 0" />
+      <mass value="0.20000000" />
+      <inertia ixx="0.00048348" ixy="-0.00001045" ixz="0.00007937" iyy="0.00056047" iyz="-0.00000234" izz="0.00014844" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="../../prototype_v2.1/meshes/right_wrist_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.866666666666667 0.909803921568627 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="../../prototype_v2.1/meshes/right_wrist_pitch_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="left_wrist_pitch_joint" type="revolute">
+    <origin xyz="0.097 0.0315 -0.0285" rpy="0 0 0" />
+    <parent link="left_wrist_yaw_link" />
+    <child link="left_wrist_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.570796" upper="1.570796" effort="36" velocity="11" />
+  </joint>
+  <link name="left_welding_point" />
+  <joint name="left_welder_joint" type="fixed" dont_collapse="true">
+    <origin xyz="0.19535 -0.032 -0.01908" rpy="0 0 0" />
+    <parent link="left_wrist_pitch_link" />
+    <child link="left_welding_point" />
+  </joint>
+  <link name="right_wrist_pitch_link">
+    <inertial>
+      <origin xyz="0.07016429 -0.00805890 0.01242480" rpy="0 0 0" />
+      <mass value="0.20000000" />
+      <inertia ixx="0.00048348" ixy="-0.00001045" ixz="0.00007937" iyy="0.00056047" iyz="-0.00000234" izz="0.00014844" />
+    </inertial>
+    <visual>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="../../prototype_v2.1/meshes/right_wrist_pitch_link.STL" />
+      </geometry>
+      <material name="">
+        <color rgba="0.866666666666667 0.909803921568627 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0" rpy="0 0 0" />
+      <geometry>
+        <mesh filename="../../prototype_v2.1/meshes/right_wrist_pitch_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint name="right_wrist_pitch_joint" type="revolute">
+    <origin xyz="0.097 0.0315 -0.0285" rpy="0 0 0" />
+    <parent link="right_wrist_yaw_link" />
+    <child link="right_wrist_pitch_link" />
+    <axis xyz="0 1 0" />
+    <limit lower="-1.570796" upper="1.570796" effort="36" velocity="11" />
+  </joint>
+  <link name="right_welding_point" />
+  <joint name="right_welder_joint" type="fixed" dont_collapse="true">
+    <origin xyz="0.19535 -0.032 -0.01908" rpy="0 0 0" />
+    <parent link="right_wrist_pitch_link" />
+    <child link="right_welding_point" />
   </joint>
 </robot>

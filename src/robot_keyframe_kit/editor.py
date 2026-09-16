@@ -48,6 +48,7 @@ from .config import EditorConfig
 from .keyframe import Keyframe
 from .math_utils import interpolate_action
 from .sim_worker import SimWorker
+from .npz_export import build_holosoma_motion
 
 
 class ViserKeyframeEditor:
@@ -177,6 +178,7 @@ class ViserKeyframeEditor:
         self.action_traj: Optional[List[np.ndarray]] = None
         self.is_qpos_traj = False
         self.is_relative_frame = True
+        self._npz_replay = None  # Atomic (poses, actual sample interval) from the last test.
         self.qpos_replay: List[np.ndarray] = []
         self.motor_vel_replay: List[np.ndarray] = []
         self.joint_vel_replay: List[np.ndarray] = []
@@ -216,6 +218,7 @@ class ViserKeyframeEditor:
         self._mesh_scale_map: Dict[str, Tuple[float, float, float]] = {}
         self._mesh_quat_map: Dict[str, Tuple[float, float, float, float]] = {}
         self._com_sphere: Optional[object] = None
+        self._com_ground_sphere: Optional[object] = None
         self._scene_updater: Optional[threading.Thread] = None
         scene_hz = max(15.0, min(120.0, float(getattr(config, "scene_update_hz", 60.0))))
         self._scene_update_dt = 1.0 / scene_hz
@@ -360,17 +363,7 @@ class ViserKeyframeEditor:
         self._apply_geom_visibility()
 
         if config.show_com and not self.joint_sliders_only:
-            try:
-                self._com_sphere = self.server.scene.add_icosphere(
-                    "/robot/com",
-                    radius=0.03,
-                    position=(0.0, 0.0, 0.0),
-                    color=(1.0, 0.0, 0.0),
-                )
-                print("[Viser] Center of mass sphere added (red ball)", flush=True)
-            except Exception as exc:
-                print(f"[Viser] Failed to add CoM sphere: {exc}", flush=True)
-                self._com_sphere = None
+            self._apply_com_visibility()
 
         self._start_scene_updater()
         data_loaded = self._load_data()
@@ -1537,6 +1530,19 @@ class ViserKeyframeEditor:
         def _(_e: GuiEvent) -> None:
             self._save_data()
 
+        npz_btn = self.server.gui.add_button("💾 Save NPZ (Holosoma)")
+        self.npz_save_status = self.server.gui.add_markdown(
+            "NPZ saves the last tested trajectory in world coordinates. Run a trajectory test first."
+        )
+
+        @npz_btn.on_click
+        def _(_e: GuiEvent) -> None:
+            npz_btn.disabled = True
+            try:
+                self._save_npz()
+            finally:
+                npz_btn.disabled = False
+
         with self.server.gui.add_folder("🔑 Keyframe Operations"):
             keyframe_ops_row1 = self.server.gui.add_button_group(
                 "",
@@ -2685,7 +2691,7 @@ class ViserKeyframeEditor:
 
     def _start_scene_updater(self) -> None:
         """Launch the background scene updater thread."""
-        if not (self._geom_handles or self._scene_handles or self._com_sphere):
+        if not (self._geom_handles or self._scene_handles or self._com_sphere or self._com_ground_sphere):
             return
         if self._scene_updater and self._scene_updater.is_alive():
             return
@@ -2701,11 +2707,16 @@ class ViserKeyframeEditor:
         """Periodically push scene poses and apply visibility toggles."""
         while True:
             try:
-                if self._com_sphere is not None:
+                if self._com_sphere is not None or self._com_ground_sphere is not None:
                     with self.worker_lock:
                         com_pos = self.data.subtree_com[self._com_root_body_id].copy()
                     try:
-                        self._com_sphere.position = tuple(map(float, com_pos))
+                        if self._com_sphere is not None:
+                            self._com_sphere.position = tuple(map(float, com_pos))
+                        if self._com_ground_sphere is not None:
+                            # Vertical projection onto the editor's z=0 ground.
+                            # The center is on the plane; its upper hemisphere is visible.
+                            self._com_ground_sphere.position = (float(com_pos[0]), float(com_pos[1]), 0.0)
                     except Exception:
                         pass
 
@@ -2871,6 +2882,36 @@ class ViserKeyframeEditor:
             flush=True,
         )
         return clamped
+
+    def _save_npz(self) -> None:
+        """Save the last recorded test as a Holosoma-compatible motion."""
+        try:
+            with self.worker_lock:
+                if self.worker.is_testing:
+                    raise ValueError("Stop or finish the trajectory test before saving NPZ.")
+                recording = self._npz_replay
+            if recording is None:
+                raise ValueError("Run a trajectory test first, including after loading an older LZ4 file.")
+            poses, sample_dt = recording
+            result = build_holosoma_motion(
+                self.model, poses, sample_dt, self.config.root_body, xml_path=self.xml_path
+            )
+            motion_name = str(self.motion_name_input.value or self.config.name).strip()
+            motion_name = re.sub(r"[\\/]+", "_", motion_name).replace(" ", "_")
+            if motion_name in ("", ".", ".."):
+                raise ValueError("Enter a valid Motion Name.")
+            os.makedirs(self.result_dir, exist_ok=True)
+            result_path = os.path.abspath(os.path.join(self.result_dir, f"{motion_name}_holosoma.npz"))
+            np.savez_compressed(result_path, **result)
+            message = (
+                f"Saved NPZ: {result_path} "
+                f"({len(poses)} frames, {result['fps'][0]:g} FPS, {len(result['joint_names'])} joints, {len(result['body_names'])} bodies)"
+            )
+            self.npz_save_status.content = message
+            print(f"[NPZ] {message}", flush=True)
+        except Exception as exc:
+            self.npz_save_status.content = f"NPZ save failed: {exc}"
+            print(f"[NPZ] Save failed: {exc}", flush=True)
 
     def _save_data(self) -> None:
         try:
@@ -3566,6 +3607,10 @@ class ViserKeyframeEditor:
         site_pos_replay: List[np.ndarray],
         site_quat_replay: List[np.ndarray],
     ) -> None:
+        sample_dt = self.worker.traj_test_dt
+        if self.worker.traj_physics_enabled and not self.worker.is_qpos_traj:
+            sample_dt = self.model.opt.timestep * getattr(self.config, "n_frames", 10)
+        self._npz_replay = (np.array(qpos_replay, dtype=np.float64, copy=True), sample_dt)
         self.qpos_replay = qpos_replay
         self.motor_vel_replay = motor_vel_replay
         self.joint_vel_replay = joint_vel_replay
@@ -4699,29 +4744,30 @@ class ViserKeyframeEditor:
             self._apply_com_visibility()
 
     def _apply_com_visibility(self) -> None:
-        """Toggle visibility of the center of mass sphere."""
+        """Toggle robot CoM and its vertical projection onto the z=0 ground."""
         show_com = bool(self.show_com_checked.value) if self.show_com_checked else self.config.show_com
-
-        if show_com:
-            # Create COM sphere if it doesn't exist
-            if self._com_sphere is None:
+        for attribute, path, color in (
+            ("_com_sphere", "/robot/com", (1.0, 0.0, 0.0)),
+            ("_com_ground_sphere", "/robot/com_ground", (0.0, 0.3, 1.0)),
+        ):
+            handle = getattr(self, attribute)
+            if show_com and handle is None:
                 try:
-                    self._com_sphere = self.server.scene.add_icosphere(
-                        "/robot/com",
+                    handle = self.server.scene.add_icosphere(
+                        path,
                         radius=0.03,
                         position=(0.0, 0.0, 0.0),
-                        color=(1.0, 0.0, 0.0),
+                        color=color,
                     )
+                    setattr(self, attribute, handle)
                 except Exception as exc:
-                    print(f"[Viser] Failed to add CoM sphere: {exc}", flush=True)
-        else:
-            # Remove COM sphere if it exists
-            if self._com_sphere is not None:
+                    print(f"[Viser] Failed to add CoM marker {path}: {exc}", flush=True)
+            elif not show_com and handle is not None:
                 try:
-                    self._com_sphere.remove()
+                    handle.remove()
                 except Exception:
                     pass
-                self._com_sphere = None
+                setattr(self, attribute, None)
 
     def _base_keyframe_name(self, name: str) -> str:
         parts = name.rsplit("_", 1)
