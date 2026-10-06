@@ -1,0 +1,303 @@
+schema_version: 1
+home_deg:
+  r_shoulder_roll: -12
+  l_shoulder_roll: 12
+  r_elbow_pitch: 25
+  l_elbow_pitch: 25
+tasks:
+  pick_and_place:
+    label: Pick & Place
+    motion_duration: 16.0
+    reference_duration: 16.0
+    repeat: true
+    representation: Top-down IK waypoints; front -> right 90 degrees (arm only) ->
+      front -> rear 180 degrees (waist yaw); visual grasp preview only
+    load: {}
+    planner: front_right_rear
+    layout:
+      radius_m: 0.38
+      table_height_offset_m: 0.0
+      object_height_m: 0.04
+      grasp_offset_m: 0.025
+      lift_clearance_m: 0.14
+      basket_height_m: 0.06
+  heavy_box_lift:
+    label: Heavy Box Lift
+    motion_duration: 6
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_pitch: -25
+      l_shoulder_pitch: -25
+      r_elbow_pitch: 35
+      l_elbow_pitch: 35
+    - {}
+    load:
+      sites:
+      - right
+      - left
+      object_mass_kg: 0
+  package_carrying:
+    label: Package Carrying
+    motion_duration: 6
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - waist_yaw: 10
+      waist_pitch: 4
+    - waist_yaw: -10
+      waist_pitch: -4
+    - {}
+    load:
+      sites:
+      - right
+      - left
+      object_mass_kg: 0
+  push_pull:
+    label: Push / Pull
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_pitch: -12
+      r_elbow_pitch: -20
+    - {}
+    load:
+      resistance_force_N: 20
+  door_opening:
+    label: Door Opening
+    motion_duration: 6
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_yaw: 35
+      r_elbow_pitch: 15
+    - {}
+    load:
+      resistance_force_N: 10
+  drawer:
+    label: Drawer Opening / Closing
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_elbow_pitch: 35
+      r_shoulder_pitch: 10
+    - {}
+    load:
+      resistance_force_N: 10
+  screwdriver:
+    label: Screwdriver
+    motion_duration: 2
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_wrist_roll: 60
+    - {}
+    load:
+      resistance_torque_Nm: 2
+      axial_force_N: 10
+  valve_turning:
+    label: Valve Turning
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_wrist_roll: 45
+      r_shoulder_roll: 10
+      r_elbow_pitch: 10
+    - r_wrist_roll: -45
+      r_shoulder_roll: -10
+      r_elbow_pitch: -10
+    - {}
+    load:
+      resistance_torque_Nm: 5
+  jar_opening:
+    label: Jar Opening
+    motion_duration: 3
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_wrist_roll: 60
+    - {}
+    load:
+      resistance_torque_Nm: 3
+  drilling:
+    label: Drilling
+    motion_duration: 3
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_elbow_pitch: -5
+      r_shoulder_pitch: -3
+    - {}
+    load:
+      axial_force_N: 30
+      reaction_torque_Nm: 2
+  wrench_turning:
+    label: Wrench Turning
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_wrist_roll: 35
+    - r_wrist_roll: -35
+    - {}
+    load:
+      resistance_torque_Nm: 10
+  lever_operation:
+    label: Lever Operation
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_pitch: -20
+      r_elbow_pitch: 20
+    - {}
+    load:
+      resistance_force_N: 20
+  wiping:
+    label: Wiping / Polishing
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_roll: 8
+      r_elbow_pitch: 8
+    - r_elbow_pitch: 16
+    - r_shoulder_roll: -8
+      r_elbow_pitch: 8
+    - {}
+    load:
+      force_world_N:
+      - -15
+      - 0
+      - 0
+  stirring:
+    label: Stirring
+    motion_duration: 3
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_yaw: 8
+      r_elbow_pitch: 8
+    - r_elbow_pitch: 16
+    - r_shoulder_yaw: -8
+      r_elbow_pitch: 8
+    - {}
+    load:
+      resistance_force_N: 3
+  pouring:
+    label: Pouring
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_wrist_pitch: 45
+    - {}
+    load:
+      object_mass_kg: 0
+  hammering:
+    label: Hammering
+    motion_duration: 1.5
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_pitch: -15
+      r_elbow_pitch: 30
+      r_wrist_pitch: -15
+    - r_shoulder_pitch: 10
+      r_elbow_pitch: -15
+      r_wrist_pitch: 20
+    - {}
+    phases:
+    - 0
+    - 0.5
+    - 0.7
+    - 1
+    load: {}
+  throwing:
+    label: Throwing
+    motion_duration: 2
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - {}
+    - r_shoulder_pitch: 15
+      r_elbow_pitch: 35
+      r_wrist_pitch: -20
+    - r_shoulder_pitch: -50
+      r_elbow_pitch: -15
+      r_wrist_pitch: 25
+    - {}
+    phases:
+    - 0
+    - 0.35
+    - 0.6
+    - 1
+    load: {}
+  overhead_work:
+    label: Overhead Work
+    motion_duration: 4
+    reference_duration: 4.0
+    repeat: true
+    representation: Representative joint-space motion; not an exact Cartesian constraint
+      or grasp simulation
+    keyframes_deg:
+    - r_shoulder_pitch: -85
+      r_elbow_pitch: 20
+    - r_shoulder_pitch: -85
+      r_elbow_pitch: 20
+      r_wrist_roll: 45
+    - r_shoulder_pitch: -85
+      r_elbow_pitch: 20
+    load:
+      axial_force_N: 10
+      resistance_torque_Nm: 2

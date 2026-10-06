@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mujoco model="robot on ground">
+  <compiler angle="radian" autolimits="true" />
+  <option integrator="Euler" timestep="0.005" />
+  <default>
+    <joint armature="0.1" damping="0.1" />
+    <default class="visual_only">
+      <geom type="mesh" contype="0" conaffinity="0" group="2" />
+    </default>
+    <default class="visual_collision">
+      <geom type="mesh" solimp=".9 .99 .001" solref=".015 1" group="2" />
+    </default>
+    <default class="no_visual_collision">
+      <geom type="capsule" solimp=".9 .99 .001" solref=".015 1" group="3" />
+    </default>
+  </default>
+  <include file="./prototype_v2.1.1_barrett.xml" />
+  <include file="./floor.xml" />
+</mujoco>

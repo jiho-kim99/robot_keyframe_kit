@@ -1,0 +1,152 @@
+# 다리/허리/팔 관절의 정격값을 입력하세요. null = 미입력 (임의의 값으로 채우지 않음).
+# 감속기 이후 관절 출력축 기준. 모터축 사양을 그대로 넣지 마세요.
+# rated_torque_nm: 정격/연속 토크 [N m]. URDF effort와 별개입니다.
+# rated_velocity_rad_s: 선택 입력, 정격 속도 [rad/s]. rpm * 2*pi/60 으로 변환.
+# 예시 스타일의 선형 근사: Peak(v)=peak_torque*(1-|v|/no_load_velocity), 0 이상.
+# Rated(v)=min(rated_torque, Peak(v)). 제조사 실측 성능곡선이 아닌 시각화 모델입니다.
+# peak_torque_nm: null이면 URDF effort를 근사값으로 사용합니다.
+# no_load_velocity_rad_s: 무부하 속도. URDF velocity(허용속도)와 다르므로 직접 입력하세요.
+# rated_velocity_rad_s는 이전 설정 호환용이며 이 곡선 계산에는 사용하지 않습니다.
+schema_version: 1
+reference: joint_output
+joints:
+  left_hip_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  left_hip_roll_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  left_hip_yaw_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_knee_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  left_ankle_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  left_ankle_roll_joint:
+    rated_torque_nm: 20
+    peak_torque_nm: 60
+    no_load_velocity_rad_s: 18.4
+    rated_velocity_rad_s: 16.0
+  right_hip_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  right_hip_roll_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  right_hip_yaw_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_knee_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  right_ankle_pitch_joint:
+    rated_torque_nm: 145
+    peak_torque_nm: 440
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  right_ankle_roll_joint:
+    rated_torque_nm: 20
+    peak_torque_nm: 60
+    no_load_velocity_rad_s: 18.4
+    rated_velocity_rad_s: 16.0
+  waist_yaw_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  waist_pitch_joint:
+    rated_torque_nm: 290
+    peak_torque_nm: 880
+    no_load_velocity_rad_s: 13.9
+    rated_velocity_rad_s: 10
+  left_shoulder_pitch_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_shoulder_roll_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_shoulder_yaw_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_elbow_pitch_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_wrist_roll_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  left_wrist_yaw_joint:
+    rated_torque_nm: 10.5
+    peak_torque_nm: 36
+    no_load_velocity_rad_s: 11.6
+    rated_velocity_rad_s: 8.69
+  right_shoulder_pitch_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_shoulder_roll_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_shoulder_yaw_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_elbow_pitch_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_wrist_roll_joint:
+    rated_torque_nm: 43
+    peak_torque_nm: 120
+    no_load_velocity_rad_s: 22.7
+    rated_velocity_rad_s: 15.15
+  right_wrist_yaw_joint:
+    rated_torque_nm: 10.5
+    peak_torque_nm: 36
+    no_load_velocity_rad_s: 11.6
+    rated_velocity_rad_s: 8.69
+  left_wrist_pitch_joint:
+    rated_torque_nm: 10.5
+    peak_torque_nm: 36
+    no_load_velocity_rad_s: 11.6
+    rated_velocity_rad_s: 8.69
+  right_wrist_pitch_joint:
+    rated_torque_nm: 10.5
+    peak_torque_nm: 36
+    no_load_velocity_rad_s: 11.6
+    rated_velocity_rad_s: 8.69

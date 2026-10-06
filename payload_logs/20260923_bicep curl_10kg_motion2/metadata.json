@@ -1,0 +1,136 @@
+{
+  "xml": "/home/jiho/robot_keyframe_kit/prototype_v2.1.1/mjcf/scene_wrist10kg.xml",
+  "mode": "residual",
+  "arm": "right",
+  "ee_site": null,
+  "waypoints": null,
+  "payload_kg": 10.0,
+  "payload_com": [
+    0,
+    0,
+    0
+  ],
+  "payload_radius": 0.04,
+  "target": null,
+  "seconds": null,
+  "kp": 200.0,
+  "kd": 40.0,
+  "gravity_comp": false,
+  "dt": 0.002,
+  "print_hz": 5,
+  "port": 8766,
+  "output": "payload_logs",
+  "headless": false,
+  "run_seconds": null,
+  "requested_xml": "/home/jiho/robot_keyframe_kit/prototype_v2.1.1/mjcf/scene.xml",
+  "added_payload_kg": 0.0,
+  "payload_definition": "right_wrist_pitch_link total mass 10kg; COM y=-0.0315m (link frame); inertia scaled 50x; no added payload",
+  "workflow": "edit_then_measure",
+  "joint_names": [
+    "right_shoulder_pitch_joint",
+    "right_shoulder_roll_joint",
+    "right_shoulder_yaw_joint",
+    "right_elbow_pitch_joint",
+    "right_wrist_roll_joint",
+    "right_wrist_yaw_joint",
+    "right_wrist_pitch_joint"
+  ],
+  "torque_limits_Nm": [
+    [
+      -120.0,
+      120.0
+    ],
+    [
+      -120.0,
+      120.0
+    ],
+    [
+      -120.0,
+      120.0
+    ],
+    [
+      -120.0,
+      120.0
+    ],
+    [
+      -60.0,
+      60.0
+    ],
+    [
+      -36.0,
+      36.0
+    ],
+    [
+      -36.0,
+      36.0
+    ]
+  ],
+  "samples": 11906,
+  "run_status": "completed",
+  "command_count": 4,
+  "final_phase": "COMPLETED",
+  "final_sim_time_s": 23.810000000007662,
+  "measurement_start_sim_time_s": 19.93199999999983,
+  "plan": [
+    {
+      "name": "A",
+      "seconds": 1.0,
+      "hold": 3.0,
+      "joints": [
+        -0.32858130744023595,
+        0.0,
+        0.0,
+        -0.48835477959858803,
+        0.0,
+        0.0,
+        -0.3360298418945571
+      ]
+    },
+    {
+      "name": "B",
+      "seconds": 2.0,
+      "hold": 10.0,
+      "joints": [
+        0.01887738416366653,
+        0.0,
+        0.0,
+        0.6532486198085413,
+        0.0,
+        0.0,
+        -0.3868534454562224
+      ]
+    },
+    {
+      "name": "C",
+      "seconds": 2.0,
+      "hold": 3.0,
+      "joints": [
+        -0.32858130744023595,
+        0.0,
+        0.0,
+        -0.48835477959858803,
+        0.0,
+        0.0,
+        -0.3360298418945571
+      ]
+    },
+    {
+      "name": "C",
+      "seconds": 2.0,
+      "hold": 0.0,
+      "joints": [
+        -0.32858130744023595,
+        0.0,
+        0.0,
+        -0.48835477959858803,
+        0.0,
+        0.0,
+        -0.3360298418945571
+      ]
+    }
+  ],
+  "contacts_enabled": false,
+  "time_origin": "Start button; time_s=0 at first recorded sample",
+  "arrival": "3mm position, 0.03rad orientation, 0.02rad/s velocity sustained for 0.2s",
+  "final_point_hold_s": 0
+}

@@ -1129,8 +1129,9 @@ class SimWorker(threading.Thread):
                         target = self.action_traj[current_counter]
                         if self.traj_physics_enabled:
                             # With physics enabled, set control targets and step
-                            # Run n_frames physics substeps per control step (like original code)
-                            n_substeps = getattr(self.config, "n_frames", 10)
+                            # Advance approximately one trajectory interval, not
+                            # config.n_frames * timestep (which could run 5x fast).
+                            n_substeps = max(1, int(round(self.traj_test_dt / self.model.opt.timestep)))
                             for substep in range(n_substeps):
                                 # For position-controlled actuators, ctrl is the target position
                                 # For motor/torque actuators, we compute PD control manually

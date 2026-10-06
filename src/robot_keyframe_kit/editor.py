@@ -49,6 +49,7 @@ from .keyframe import Keyframe
 from .math_utils import interpolate_action
 from .sim_worker import SimWorker
 from .npz_export import build_holosoma_motion
+from .sequence_support import interpolate_supported, support_frames
 
 
 class ViserKeyframeEditor:
@@ -172,6 +173,11 @@ class ViserKeyframeEditor:
         # State
         self.keyframes: List[Keyframe] = []
         self.sequence_list: List[Tuple[str, float]] = []
+        # Outgoing support attached to each sequence row; last row is unused.
+        self.sequence_supports = []
+        self.segment_selector = None
+        self.segment_support_selector = None
+        self._updating_segment_controls = False
         self.selected_keyframe: Optional[int] = None
         self.selected_sequence: Optional[int] = None
         self.traj_times: List[float] = []
@@ -226,6 +232,7 @@ class ViserKeyframeEditor:
         self._penetration_last_check = 0.0
         self._penetration_reported: Dict[int, float] = {}
         self.show_ground_contacts = None
+        self.show_contact_labels = None
         self._scene_updater: Optional[threading.Thread] = None
         scene_hz = max(15.0, min(120.0, float(getattr(config, "scene_update_hz", 60.0))))
         self._scene_update_dt = 1.0 / scene_hz
@@ -1616,6 +1623,33 @@ class ViserKeyframeEditor:
                         self.worker.is_testing = False
 
     def _build_keyframe_sequence_panels(self) -> None:
+        if self.segment_selector is None:
+            with self.server.gui.add_folder("Sequence Support Frames (Play Qpos)"):
+                self.segment_selector = self.server.gui.add_dropdown(
+                    "Segment", options=("No segments",), initial_value="No segments")
+                self.segment_support_selector = self.server.gui.add_dropdown(
+                    "Fixed world frame", options=("Free (original)", *support_frames(self.model)),
+                    initial_value="Free (original)",
+                    hint="Fix one frame at its segment-start world pose. Recompute pelvis; keep joint angles. No physics or other collision constraints.")
+                self.server.gui.add_markdown(
+                    "구간 선택 → 고정할 프레임 선택. 시작 위치·방향을 유지합니다. "
+                    "접지 높이를 자동으로 맞추지는 않습니다. 저장된 끝 pelvis는 달라질 수 있습니다.")
+
+                @self.segment_selector.on_update
+                def _segment_selected(_event):
+                    if not self._updating_segment_controls and id(_event.target) not in self._updating_handles:
+                        self._refresh_segment_controls()
+
+                @self.segment_support_selector.on_update
+                def _segment_support_selected(_event):
+                    if (self._updating_segment_controls or id(_event.target) in self._updating_handles
+                            or len(self.sequence_list) < 2):
+                        return
+                    index = int(self.segment_selector.value.split(":", 1)[0])
+                    self._normalize_sequence_supports()
+                    value = self.segment_support_selector.value
+                    self.sequence_supports[index] = None if value == "Free (original)" else value
+
         supports_gui_list = hasattr(self.server.gui, "add_list")
 
         if supports_gui_list and self.keyframes_list_widget is None:
@@ -1891,6 +1925,8 @@ class ViserKeyframeEditor:
 
         moved = self.sequence_list.pop(src_idx)
         self.sequence_list.insert(dst_idx, moved)
+        self._normalize_sequence_supports()
+        self.sequence_supports.insert(dst_idx, self.sequence_supports.pop(src_idx))
 
         if self.selected_sequence is not None:
             if self.selected_sequence == src_idx:
@@ -2206,10 +2242,11 @@ class ViserKeyframeEditor:
             return None
 
         jmin, jmax = float(limits[0]), float(limits[1])
-        rounded_min = round(jmin, 2)
-        rounded_max = round(jmax, 2)
-        span = max(rounded_max - rounded_min, 1e-6)
-        step = max(span / 4000.0, 1e-4)
+        rounded_min = float(np.ceil(jmin * 10000.0) / 10000.0)
+        rounded_max = float(np.floor(jmax * 10000.0) / 10000.0)
+        if rounded_min >= rounded_max:
+            rounded_min, rounded_max = jmin, jmax
+        step = 0.0001
         default_val = float(self.default_positions.get(joint_name, (jmin + jmax) * 0.5))
         default_val = min(max(default_val, rounded_min), rounded_max)
 
@@ -2222,15 +2259,15 @@ class ViserKeyframeEditor:
             initial_value=default_val,
         )
         self.slider_widgets[joint_name] = slider
-        slider.precision = 2
-        slider.value = round(float(slider.value), 2)
+        slider.precision = 4
+        slider.value = min(max(round(float(slider.value), 4), rounded_min), rounded_max)
 
         @slider.on_update
         def _(_event: GuiEvent, jname=joint_name, sld=slider) -> None:
             if id(sld) in self._updating_handles:
                 return
             try:
-                value = round(float(sld.value), 2)
+                value = min(max(round(float(sld.value), 4), jmin), jmax)
                 if sld.value != value:
                     self._set_handle_value(sld, value)
             except Exception:
@@ -2736,6 +2773,13 @@ class ViserKeyframeEditor:
             section_color=(114, 158, 183), cell_thickness=0.5,
             section_thickness=0.5, shadow_opacity=0.25,
         )
+        # World-fixed visual guide: 1500 mm along Y, centered on the origin.
+        self.server.scene.add_line_segments(
+            "/world_y_reference_line",
+            points=np.array([[[0.6, -0.75, 0.0], [0.6, 0.75, 0.0]]], dtype=np.float32),
+            colors=(255, 220, 0),
+            line_width=5.0,
+        )
 
     def _ground_contact_poses(self):
         """Snapshot robot/ground-plane contacts, grouped by link and plane.
@@ -2771,19 +2815,20 @@ class ViserKeyframeEditor:
         return {key: (np.mean(points, axis=0) + rotation[:, 2] * 0.003, rotation)
                 for key, (points, rotation) in groups.items()}
 
-    def _ground_penetration_depths(self) -> Dict[int, float]:
+    def _ground_penetration_depths(self, data=None, tolerance: float = 0.0001) -> Dict[int, float]:
         """Maximum surface penetration per robot body (meters).
 
         Caller holds worker_lock. Includes visual meshes so missing collision
         flags cannot hide a buried link. Uses upward horizontal world planes,
         or the editor's z=0 ground if none exist. Does not step the simulation.
         """
+        data = self.data if data is None else data
         ground_z = []
         for gid in range(self.model.ngeom):
             if (int(self.model.geom_bodyid[gid]) == 0
                     and int(self.model.geom_type[gid]) == int(mujoco.mjtGeom.mjGEOM_PLANE)
-                    and self.data.geom_xmat[gid].reshape(3, 3)[2, 2] > 0.999999):
-                ground_z.append(float(self.data.geom_xpos[gid, 2]))
+                    and data.geom_xmat[gid].reshape(3, 3)[2, 2] > 0.999999):
+                ground_z.append(float(data.geom_xpos[gid, 2]))
         floor = max(ground_z, default=0.0)
         depths = {}
         for gid in range(self.model.ngeom):
@@ -2795,8 +2840,8 @@ class ViserKeyframeEditor:
                 continue
             kind = int(self.model.geom_type[gid])
             size = self.model.geom_size[gid]
-            z = float(self.data.geom_xpos[gid, 2])
-            axis = self.data.geom_xmat[gid].reshape(3, 3)[2]
+            z = float(data.geom_xpos[gid, 2])
+            axis = data.geom_xmat[gid].reshape(3, 3)[2]
             if kind == int(mujoco.mjtGeom.mjGEOM_MESH):
                 mid = int(self.model.geom_dataid[gid])
                 start, count = int(self.model.mesh_vertadr[mid]), int(self.model.mesh_vertnum[mid])
@@ -2817,7 +2862,7 @@ class ViserKeyframeEditor:
                 continue
             # Ignore sub-0.1 mm numerical/contact tolerances.
             depth = floor - low
-            if depth > 0.0001:
+            if depth > tolerance:
                 depths[body] = max(depths.get(body, 0.0), depth)
         return depths
 
@@ -2840,6 +2885,7 @@ class ViserKeyframeEditor:
 
     def _update_ground_contact_markers(self) -> None:
         enabled = self.show_ground_contacts is not None and self.show_ground_contacts.value
+        labels_enabled = enabled and self.show_contact_labels is not None and self.show_contact_labels.value
         now = time.monotonic()
         with self.worker_lock:
             poses = self._ground_contact_poses()
@@ -2864,7 +2910,7 @@ class ViserKeyframeEditor:
         for key, handle in self._ground_contact_handles.items():
             handle.visible = bool(enabled and key in poses)
         for key, label in self._ground_contact_labels.items():
-            label.visible = bool(enabled and key in poses)
+            label.visible = bool(labels_enabled and key in poses)
         if not enabled:
             return
         for key, (position, rotation) in poses.items():
@@ -2902,11 +2948,12 @@ class ViserKeyframeEditor:
                 self._ground_contact_labels[key] = self.server.scene.add_label(
                     f"/ground_contact_labels/{key[0]}_{key[1]}", text,
                     depth_test=False, font_screen_scale=0.8,
+                    visible=bool(labels_enabled),
                 )
             label = self._ground_contact_labels[key]
             label.text = text
             label.position = tuple(position + rotation[:, 2] * 0.12)
-            label.visible = True
+            label.visible = bool(labels_enabled)
 
     def _start_scene_updater(self) -> None:
         """Launch the background scene updater thread."""
@@ -3034,7 +3081,27 @@ class ViserKeyframeEditor:
             is_relative_frame=self.is_relative_frame,
         )
 
+    def _interpolate_qpos_trajectory(self, times, keyframes, sample_times):
+        """Interpolate joints and root orientation without ground/root correction."""
+        frames = []
+        for t in sample_times:
+            i = min(max(int(np.searchsorted(times, t, side="right")) - 1, 0), len(times) - 2)
+            fraction = float(np.clip((t - times[i]) / (times[i + 1] - times[i]), 0, 1))
+            q = np.array(keyframes[i], dtype=np.float64, copy=True)
+            target = np.array(keyframes[i + 1], dtype=np.float64, copy=True)
+            mujoco.mj_normalizeQuat(self.model, q)
+            mujoco.mj_normalizeQuat(self.model, target)
+            tangent = np.zeros(self.model.nv)
+            mujoco.mj_differentiatePos(self.model, tangent, 1.0, q, target)
+            mujoco.mj_integratePos(self.model, q, tangent, fraction)
+            frames.append(q)
+        return frames
+
     def _test_qpos_trajectory(self) -> None:
+        with self.worker_lock:
+            if self.worker.is_testing:
+                print("[Qpos] Stop the current playback first.", flush=True)
+                return
         if len(self.sequence_list) < 2:
             print("[Viser] Qpos traj: need at least 2 sequence entries.", flush=True)
             return
@@ -3068,20 +3135,28 @@ class ViserKeyframeEditor:
             return
         times_arr = times_arr - times_arr[0]
         self.traj_times = list(np.arange(0, times_arr[-1], self.dt))
-        qpos_arr = np.array(qpos_list)
-        qpos_traj: List[np.ndarray] = []
+        # Include the final endpoint; arange by itself omits it.
+        self.traj_times.append(float(times_arr[-1]))
         traj_start = int(np.searchsorted(self.traj_times, times_arr[start_idx]))
-        for t in self.traj_times:
-            if t < times_arr[-1]:
-                qpos_t = interpolate_action(t, times_arr, qpos_arr)
-            else:
-                qpos_t = qpos_arr[-1]
-            qpos_traj.append(qpos_t)
+        try:
+            self._normalize_sequence_supports()
+            if len(qpos_list) != len(self.sequence_list):
+                raise ValueError("Every sequence entry must have a saved qpos")
+            qpos_traj = interpolate_supported(
+                self.model, times_arr, qpos_list, self.traj_times,
+                self.sequence_supports[:-1],
+            )
+        except ValueError as exc:
+            print(f"[Qpos] Playback cancelled: {exc}", flush=True)
+            return
+        playback_frames = qpos_traj[traj_start:]
         self.is_qpos_traj = True
         self.is_relative_frame = bool(self.relative_frame_checked.value) if self.relative_frame_checked else True
+        self.action_traj = None
+        print("[Qpos] Kinematic preview: configured segment supports, no physics.", flush=True)
         self.worker.request_trajectory_test(
-            qpos_list[start_idx],
-            qpos_traj[traj_start:],
+            playback_frames[0],
+            playback_frames,
             self.dt,
             physics_enabled=False,
             is_qpos_traj=True,
@@ -3162,6 +3237,8 @@ class ViserKeyframeEditor:
             result_dict["action"] = action_to_save
             result_dict["keyframes"] = saved_keyframes
             result_dict["timed_sequence"] = self.sequence_list
+            self._normalize_sequence_supports()
+            result_dict["sequence_support_frames"] = self.sequence_supports
             result_dict["is_robot_relative_frame"] = self.is_relative_frame
 
             motion_name = str(self.motion_name_input.value if self.motion_name_input else self.config.name).strip()
@@ -3184,6 +3261,7 @@ class ViserKeyframeEditor:
         """Load keyframe data from file. Returns True if data was loaded."""
         self.keyframes.clear()
         self.sequence_list.clear()
+        self.sequence_supports = []
         self._refresh_keyframes_table()
         self._refresh_sequence_table()
 
@@ -3320,6 +3398,8 @@ class ViserKeyframeEditor:
             self.keyframes.extend(loaded_keyframes)
             sequence_entries = data.get("timed_sequence", [])
             self.sequence_list = [(n.replace(" ", "_"), float(t)) for (n, t) in sequence_entries]
+            self.sequence_supports = list(data.get("sequence_support_frames", []))
+            self._normalize_sequence_supports()
             self.traj_times = list(map(float, data.get("time", [])))
             self.action_traj = data.get("action", [])
             self.qpos_replay = list(data.get("qpos", []))
@@ -3388,6 +3468,9 @@ class ViserKeyframeEditor:
             return
         name_to_remove = self.keyframes[self.selected_keyframe].name
         self.keyframes.pop(self.selected_keyframe)
+        self._normalize_sequence_supports()
+        self.sequence_supports = [s for (n, _), s in zip(self.sequence_list, self.sequence_supports)
+                                  if n != name_to_remove]
         self.sequence_list = [(n, t) for (n, t) in self.sequence_list if n != name_to_remove]
         self.selected_keyframe = None
         self._refresh_keyframes_table()
@@ -3466,6 +3549,8 @@ class ViserKeyframeEditor:
     def _remove_from_sequence(self) -> None:
         if self.selected_sequence is None:
             return
+        self._normalize_sequence_supports()
+        self.sequence_supports.pop(self.selected_sequence)
         self.sequence_list.pop(self.selected_sequence)
         self.selected_sequence = None
         self._refresh_sequence_table()
@@ -3476,6 +3561,9 @@ class ViserKeyframeEditor:
         current_idx = self.selected_sequence
         new_idx = current_idx + direction
         if 0 <= new_idx < len(self.sequence_list):
+            self._normalize_sequence_supports()
+            self.sequence_supports[current_idx], self.sequence_supports[new_idx] = (
+                self.sequence_supports[new_idx], self.sequence_supports[current_idx])
             self.sequence_list[current_idx], self.sequence_list[new_idx] = (
                 self.sequence_list[new_idx],
                 self.sequence_list[current_idx],
@@ -3543,7 +3631,36 @@ class ViserKeyframeEditor:
         self.keyframes_summary.content = wrapped
 
     def _refresh_sequence_table(self) -> None:
+        self._normalize_sequence_supports()
+        self._refresh_segment_controls()
         self._refresh_sequence_summary()
+
+    def _normalize_sequence_supports(self):
+        values = list(getattr(self, "sequence_supports", []))
+        self.sequence_supports = (values + [None] * len(self.sequence_list))[:len(self.sequence_list)]
+
+    def _refresh_segment_controls(self):
+        if self.segment_selector is None:
+            return
+        self._normalize_sequence_supports()
+        self._updating_segment_controls = True
+        try:
+            options = tuple(f"{i}: {self.sequence_list[i][0]} → {self.sequence_list[i + 1][0]}"
+                            for i in range(len(self.sequence_list) - 1)) or ("No segments",)
+            previous = self.segment_selector.value
+            self.segment_selector.options = options
+            selected = previous if previous in options else options[0]
+            self._set_handle_value(self.segment_selector, selected)
+            enabled = len(self.sequence_list) >= 2
+            self.segment_support_selector.disabled = not enabled
+            value = self.sequence_supports[int(selected.split(":", 1)[0])] if enabled else None
+            choices = ("Free (original)", *support_frames(self.model))
+            if value and value not in choices:
+                choices += (value,)  # Keep missing frames visible; playback reports the error.
+            self.segment_support_selector.options = choices
+            self._set_handle_value(self.segment_support_selector, value or "Free (original)")
+        finally:
+            self._updating_segment_controls = False
 
     def _refresh_sequence_summary(self) -> None:
         if self.sequence_list_widget is not None:
@@ -4892,6 +5009,10 @@ class ViserKeyframeEditor:
                 "Show Ground Contacts", True,
                 hint="New contact: yellow pulse for 2 s. Continuing: green. Penetration >0.1 mm: red. Labels show link and status. Disk size is illustrative, not contact area or force.",
             )
+            self.show_contact_labels = self.server.gui.add_checkbox(
+                "Show Contact Labels", True,
+                hint="Show/hide link names and CONTACT/PENETRATION text without hiding the contact disks.",
+            )
             support_options = {"Off": None}
             if self.has_floating_base:
                 for name in self.config.end_effector_sites or []:
@@ -4929,7 +5050,10 @@ class ViserKeyframeEditor:
 
             row2 = self.server.gui.add_columns(2, widths=(1.0, 1.0))
             with row2[0]:
-                self.physics_enabled = self.server.gui.add_checkbox("Enable Physics", True)
+                self.physics_enabled = self.server.gui.add_checkbox(
+                    "Enable Physics", True,
+                    hint="Applies to Test and Play Traj. Play Qpos always directly replays poses without physics or automatic ground correction.",
+                )
             with row2[1]:
                 self.relative_frame_checked = self.server.gui.add_checkbox(
                     "Use Robot Frame",

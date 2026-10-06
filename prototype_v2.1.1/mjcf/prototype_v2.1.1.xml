@@ -31,7 +31,7 @@
     <mesh name="right_wrist_pitch_link" content_type="model/stl" file="../../prototype_v2.1/meshes/right_wrist_pitch_link.STL" />
   </asset>
   <worldbody>
-    <body name="pelvis_link">
+    <body name="pelvis_link" pos="0 0 0.85851">
       <inertial pos="-8.97641009268044E-09 -2.77555756156289E-17 0.0108648264545672" mass="0.784597038788837" fullinertia="0.00185392443193884 0.00119922876251883 0.0017074386215359 -1.45618415560541E-10 -6.93611949427077E-07 3.18516087515177E-20" />
       <freejoint name="floating_base_joint" />
       <geom type="mesh" rgba="0.866667 0.909804 1 1" mesh="pelvis_link" />

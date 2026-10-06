@@ -1,4 +1,4 @@
-<mujoco model="walking scene">
+<mujoco model="robot on ground">
 
     <!-- Default options -->
     <compiler angle="radian" autolimits="true" />
@@ -27,8 +27,7 @@
   <!-- Floor and Sky -->
   <include file="./floor.xml" />
 
-  <!-- Access-hole welding workpiece -->
-  <include file="./workpiece.xml" />
+
 
 
 </mujoco>

@@ -1,0 +1,41 @@
+{
+  "units": "joint_output_Nm",
+  "description": "Enter verified gearbox-output ratings. null means unknown; XML control limits are not motor ratings.",
+  "joints": {
+    "right_shoulder_pitch_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_shoulder_roll_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_shoulder_yaw_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_elbow_pitch_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_wrist_roll_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_wrist_yaw_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    },
+    "right_wrist_pitch_joint": {
+      "rated_torque_Nm": null,
+      "peak_torque_Nm": null,
+      "source": ""
+    }
+  }
+}
